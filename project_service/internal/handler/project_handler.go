@@ -31,6 +31,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, req *pb.CreateProjec
 	if req.GetClientId() == "" || req.GetTitle() == "" || req.GetDescription() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required fields")
 	}
+
 	tasks := make([]model.Task, len(req.Tasks))
 	for i, t := range req.Tasks {
 		tasks[i] = model.Task{Title: t.Title, Description: t.Description, Status: t.Status}
@@ -50,10 +51,13 @@ func (s *ProjectService) CreateProject(ctx context.Context, req *pb.CreateProjec
 		return nil, err
 	}
 	project.ID = id
-	_ = s.publisher.PublishProjectCreated(project)
+
+	// Publising NATS
 	if err := s.publisher.PublishProjectCreated(project); err != nil {
 		log.Println("failed to publish project.created:", err)
 	}
+
+	s.cache.Delete(ctx, "projects:client:"+req.ClientId)
 
 	return &pb.CreateProjectResponse{Id: id, Message: "Project created successfully"}, nil
 }
@@ -154,6 +158,7 @@ func (s *ProjectService) UpdateProject(ctx context.Context, req *pb.UpdateProjec
 	if req.GetClientId() == "" || req.GetProjectId() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required fields")
 	}
+
 	tasks := make([]model.Task, len(req.Tasks))
 	for i, t := range req.Tasks {
 		tasks[i] = model.Task{Title: t.Title, Description: t.Description, Status: t.Status}
@@ -167,10 +172,14 @@ func (s *ProjectService) UpdateProject(ctx context.Context, req *pb.UpdateProjec
 		Attachments: req.Attachments,
 	}
 
-	err := s.repo.Update(ctx, req.ProjectId, project)
-	if err != nil {
+	if err := s.repo.Update(ctx, req.ProjectId, project); err != nil {
 		return nil, err
 	}
+
+	s.cache.Delete(ctx, "project:"+req.ProjectId)
+	s.cache.Delete(ctx, "projects:client:"+req.ClientId)
+	s.cache.Delete(ctx, "tasks:project:"+req.ProjectId)
+
 	return &pb.UpdateProjectResponse{Message: "Project updated successfully"}, nil
 }
 
@@ -178,10 +187,20 @@ func (s *ProjectService) DeleteProject(ctx context.Context, req *pb.DeleteProjec
 	if req.GetId() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required fields")
 	}
-	err := s.repo.Delete(ctx, req.Id)
+
+	project, err := s.repo.FindByID(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
+
+	if err := s.repo.Delete(ctx, req.Id); err != nil {
+		return nil, err
+	}
+
+	s.cache.Delete(ctx, "project:"+req.Id)
+	s.cache.Delete(ctx, "projects:client:"+project.ClientID)
+	s.cache.Delete(ctx, "tasks:project:"+req.Id)
+
 	return &pb.DeleteProjectResponse{Message: "Project deleted successfully"}, nil
 }
 
@@ -189,10 +208,20 @@ func (s *ProjectService) AttachFile(ctx context.Context, req *pb.AttachFileReque
 	if req.GetProjectId() == "" || req.GetFileUrl() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required fields")
 	}
+
 	err := s.repo.AttachFile(ctx, req.ProjectId, req.FileUrl)
 	if err != nil {
 		return nil, err
 	}
+
+	project, err := s.repo.FindByID(ctx, req.ProjectId)
+	if err == nil {
+		s.cache.Delete(ctx, "projects:client:"+project.ClientID)
+	}
+
+	s.cache.Delete(ctx, "project:"+req.ProjectId)
+	s.cache.Delete(ctx, "tasks:project:"+req.ProjectId)
+
 	return &pb.AttachFileResponse{Message: "File attached successfully"}, nil
 }
 
@@ -200,10 +229,20 @@ func (s *ProjectService) DeleteFile(ctx context.Context, req *pb.DeleteFileReque
 	if req.GetProjectId() == "" || req.GetFileUrl() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required fields")
 	}
+
 	err := s.repo.DeleteFile(ctx, req.ProjectId, req.FileUrl)
 	if err != nil {
 		return nil, err
 	}
+
+	project, err := s.repo.FindByID(ctx, req.ProjectId)
+	if err == nil {
+		s.cache.Delete(ctx, "projects:client:"+project.ClientID)
+	}
+
+	s.cache.Delete(ctx, "project:"+req.ProjectId)
+	s.cache.Delete(ctx, "tasks:project:"+req.ProjectId)
+
 	return &pb.DeleteFileResponse{Message: "File deleted successfully"}, nil
 }
 
@@ -212,19 +251,26 @@ func (s *ProjectService) CreateTask(ctx context.Context, req *pb.CreateTaskReque
 		return nil, status.Errorf(codes.InvalidArgument, "missing required fields")
 	}
 
-	exists, erro := s.repo.HasTaskWithTitle(ctx, req.ProjectId, req.Title)
-	if erro != nil {
-		return nil, status.Errorf(codes.Internal, "failed to check task title: %v", erro)
+	exists, err := s.repo.HasTaskWithTitle(ctx, req.ProjectId, req.Title)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to check task title: %v", err)
 	}
 	if exists {
 		return nil, status.Errorf(codes.AlreadyExists, "task title already exists in this project")
 	}
 
 	task := model.Task{Title: req.Title, Description: req.Description, Status: req.Status}
-	err := s.repo.AddTask(ctx, req.ProjectId, task)
-	if err != nil {
+	if err := s.repo.AddTask(ctx, req.ProjectId, task); err != nil {
 		return nil, err
 	}
+
+	project, err := s.repo.FindByID(ctx, req.ProjectId)
+	if err == nil {
+		s.cache.Delete(ctx, "projects:client:"+project.ClientID)
+	}
+	s.cache.Delete(ctx, "project:"+req.ProjectId)
+	s.cache.Delete(ctx, "tasks:project:"+req.ProjectId)
+
 	return &pb.CreateTaskResponse{Message: "Task added successfully"}, nil
 }
 
@@ -232,11 +278,26 @@ func (s *ProjectService) UpdateTask(ctx context.Context, req *pb.UpdateTaskReque
 	if req.GetProjectId() == "" || req.GetNewDescription() == "" || req.GetNewStatus() == "" || req.GetTaskTitle() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required fields")
 	}
-	task := model.Task{Title: req.NewTitle, Description: req.NewDescription, Status: req.NewStatus}
+
+	task := model.Task{
+		Title:       req.NewTitle,
+		Description: req.NewDescription,
+		Status:      req.NewStatus,
+	}
+
 	err := s.repo.UpdateTask(ctx, req.ProjectId, req.TaskTitle, task)
 	if err != nil {
 		return nil, err
 	}
+
+	project, err := s.repo.FindByID(ctx, req.ProjectId)
+	if err == nil {
+		s.cache.Delete(ctx, "projects:client:"+project.ClientID)
+	}
+
+	s.cache.Delete(ctx, "project:"+req.ProjectId)
+	s.cache.Delete(ctx, "tasks:project:"+req.ProjectId)
+
 	return &pb.UpdateTaskResponse{Message: "Task updated successfully"}, nil
 }
 
@@ -244,10 +305,20 @@ func (s *ProjectService) DeleteTask(ctx context.Context, req *pb.DeleteTaskReque
 	if req.GetTaskTitle() == "" || req.GetProjectId() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required fields")
 	}
+
 	err := s.repo.DeleteTask(ctx, req.ProjectId, req.TaskTitle)
 	if err != nil {
 		return nil, err
 	}
+
+	project, err := s.repo.FindByID(ctx, req.ProjectId)
+	if err == nil {
+		s.cache.Delete(ctx, "projects:client:"+project.ClientID)
+	}
+
+	s.cache.Delete(ctx, "project:"+req.ProjectId)
+	s.cache.Delete(ctx, "tasks:project:"+req.ProjectId)
+
 	return &pb.DeleteTaskResponse{Message: "Task deleted successfully"}, nil
 }
 
