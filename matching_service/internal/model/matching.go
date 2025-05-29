@@ -1,4 +1,12 @@
-package models
+package model
+
+import (
+	"github.com/google/uuid"
+)
+
+func GenerateUUID() string {
+	return uuid.New().String()
+}
 
 type Bid struct {
 	BidID        string `bson:"bidid"`
