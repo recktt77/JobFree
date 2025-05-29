@@ -26,77 +26,75 @@ import (
 const shutdownTimeout = 30 * time.Second
 
 type App struct {
-    grpcServer  *server.API
-    redisClient *rediscache.RedisCache
+	grpcServer  *server.API
+	redisClient *rediscache.RedisCache
 }
 
 func Run(ctx context.Context, cfg config.Config) {
-    log.Println("Starting user-service...")
+	log.Println("Starting user-service...")
 
-    // Mongo
-    mongoClient, err := mongopkg.NewDB(ctx, cfg.Mongo)
-    if err != nil {
-        log.Fatalf("mongo connection failed: %v", err)
-    }
-    userDAO := dao.NewUserDAO(mongoClient.Conn)
-    userRepo := mongo.NewUserRepository(userDAO)
+	// Mongo
+	mongoClient, err := mongopkg.NewDB(ctx, cfg.Mongo)
+	if err != nil {
+		log.Fatalf("mongo connection failed: %v", err)
+	}
+	userDAO := dao.NewUserDAO(mongoClient.Conn)
+	userRepo := mongo.NewUserRepository(userDAO)
 
-    // Redis
-    redisClient, err := redispkg.NewProduct(ctx, redispkg.Config(cfg.Redis))
+	// Redis
+	redisClient, err := redispkg.NewProduct(ctx, redispkg.Config(cfg.Redis))
 	if err != nil {
 		log.Fatalf("redis connection failed: %v", err)
 	}
 
 	redisCache := rediscache.NewRedisCache(redisClient.Unwrap(), cfg.Cache.UserTTL)
 
+	// InMemory fallback
+	// memoryCache := inmemory.NewInMemoryCache(cfg.Cache.UserTTL)
 
+	// // Example: initialize in-memory cache with all users (if you have a GetAll method)
+	// users, err := userRepo.GetAll(ctx)
+	// if err == nil {
+	//     memoryCache.SetMany(users)
+	//     log.Println("in-memory user cache initialized from DB")
+	// } else {
+	//     log.Println("failed to init in-memory cache:", err)
+	// }
 
+	// NATS
+	natsConn, err := natspkg.Connect(cfg.NATSUrl)
+	if err != nil {
+		log.Fatalf("NATS connection failed: %v", err)
+	}
+	eventPublisher := producer.NewUserEventPublisher(natsConn)
+	log.Printf("NATS connected: %v", natsConn.IsConnected())
 
-    // InMemory fallback
-    // memoryCache := inmemory.NewInMemoryCache(cfg.Cache.UserTTL)
+	// UseCase
+	userUC := usecase.NewUserUseCase(userRepo, redisCache, eventPublisher)
 
-    // // Example: initialize in-memory cache with all users (if you have a GetAll method)
-    // users, err := userRepo.GetAll(ctx)
-    // if err == nil {
-    //     memoryCache.SetMany(users)
-    //     log.Println("in-memory user cache initialized from DB")
-    // } else {
-    //     log.Println("failed to init in-memory cache:", err)
-    // }
+	// gRPC Server
+	grpcServer := server.New(cfg.Server.GRPCServer, userUC)
 
-    // NATS
-    natsConn, err := natspkg.Connect(cfg.NATSUrl)
-    if err != nil {
-        log.Fatalf("NATS connection failed: %v", err)
-    }
-    eventPublisher := producer.NewUserEventPublisher(natsConn)
+	// Run server
+	errCh := make(chan error, 1)
+	grpcServer.Run(ctx, errCh)
 
-    // UseCase
-    userUC := usecase.NewUserUseCase(userRepo, redisCache, eventPublisher)
+	shutdownCh := make(chan struct{})
+	go func() {
+		select {
+		case err := <-errCh:
+			log.Fatalf("server error: %v", err)
+		case <-ctx.Done():
+			log.Println("Shutdown initiated...")
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+			defer cancel()
+			_ = grpcServer.Stop(shutdownCtx)
+			shutdownCh <- struct{}{}
+		}
+	}()
 
-    // gRPC Server
-    grpcServer := server.New(cfg.Server.GRPCServer, userUC)
-
-    // Run server
-    errCh := make(chan error, 1)
-    grpcServer.Run(ctx, errCh)
-
-    shutdownCh := make(chan struct{})
-    go func() {
-        select {
-        case err := <-errCh:
-            log.Fatalf("server error: %v", err)
-        case <-ctx.Done():
-            log.Println("Shutdown initiated...")
-            shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-            defer cancel()
-            _ = grpcServer.Stop(shutdownCtx)
-            shutdownCh <- struct{}{}
-        }
-    }()
-
-    <-shutdownCh
-    log.Println("Shutdown complete.")
+	<-shutdownCh
+	log.Println("Shutdown complete.")
 }
 func (a *App) Run() error {
 	errCh := make(chan error, 1)
