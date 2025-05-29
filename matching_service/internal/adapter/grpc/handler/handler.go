@@ -23,11 +23,17 @@ func NewMatchingHandler(uc usecase.MatchingUseCase) *MatchingHandler {
 	}
 }
 
+// CreateBid handles bid creation with validation
 func (h *MatchingHandler) CreateBid(ctx context.Context, req *matchingpb.CreateBidRequest) (*matchingpb.CreateBidResponse, error) {
+	// 🔒 Валидация
 	if isEmpty(req.GetProjectId(), req.GetFreelancerId()) {
 		return nil, status.Error(codes.InvalidArgument, "project_id and freelancer_id are required")
 	}
+	if len(strings.TrimSpace(req.GetCoverLetter())) < 10 {
+		return nil, status.Error(codes.InvalidArgument, "cover_letter must be at least 10 characters")
+	}
 
+	// 🧠 Бизнес-логика
 	bid := &model.Bid{
 		BidID:        generateID(),
 		ProjectID:    req.GetProjectId(),
@@ -41,6 +47,7 @@ func (h *MatchingHandler) CreateBid(ctx context.Context, req *matchingpb.CreateB
 	return &matchingpb.CreateBidResponse{BidId: id}, nil
 }
 
+// GetBidsForProject handles getting all bids for a project with validation
 func (h *MatchingHandler) GetBidsForProject(ctx context.Context, req *matchingpb.GetBidsRequest) (*matchingpb.GetBidsResponse, error) {
 	if strings.TrimSpace(req.GetProjectId()) == "" {
 		return nil, status.Error(codes.InvalidArgument, "project_id is required")
@@ -64,13 +71,17 @@ func (h *MatchingHandler) GetBidsForProject(ctx context.Context, req *matchingpb
 	return &matchingpb.GetBidsResponse{Bids: pbBids}, nil
 }
 
+// MatchFreelancers handles freelancer matching (basic skill logic)
 func (h *MatchingHandler) MatchFreelancers(ctx context.Context, req *matchingpb.MatchRequest) (*matchingpb.MatchResponse, error) {
-	// Хардкодим список нужных скиллов (временное решение)
-	requiredSkills := []string{"Go", "MongoDB"} // ты можешь здесь задать любой список
+	if strings.TrimSpace(req.GetProjectId()) == "" {
+		return nil, status.Error(codes.InvalidArgument, "project_id is required")
+	}
+
+	requiredSkills := []string{"Go", "MongoDB"}
 
 	freelancers, err := h.UseCase.MatchFreelancers(ctx, requiredSkills)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "failed to match freelancers: %v", err)
 	}
 
 	var resp []*matchingpb.Freelancer
@@ -90,7 +101,7 @@ func generateID() string {
 	return "bid_" + model.GenerateUUID()
 }
 
-// Вспомогательная проверка пустых строк
+// isEmpty checks for blank strings
 func isEmpty(strs ...string) bool {
 	for _, s := range strs {
 		if strings.TrimSpace(s) == "" {
