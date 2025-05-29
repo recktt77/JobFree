@@ -23,9 +23,8 @@ func NewMatchingHandler(uc usecase.MatchingUseCase) *MatchingHandler {
 	}
 }
 
-// CreateBid handles bid creation with validation
 func (h *MatchingHandler) CreateBid(ctx context.Context, req *matchingpb.CreateBidRequest) (*matchingpb.CreateBidResponse, error) {
-	// 🔒 Валидация
+
 	if isEmpty(req.GetProjectId(), req.GetFreelancerId()) {
 		return nil, status.Error(codes.InvalidArgument, "project_id and freelancer_id are required")
 	}
@@ -33,7 +32,6 @@ func (h *MatchingHandler) CreateBid(ctx context.Context, req *matchingpb.CreateB
 		return nil, status.Error(codes.InvalidArgument, "cover_letter must be at least 10 characters")
 	}
 
-	// 🧠 Бизнес-логика
 	bid := &model.Bid{
 		BidID:        generateID(),
 		ProjectID:    req.GetProjectId(),
@@ -47,7 +45,6 @@ func (h *MatchingHandler) CreateBid(ctx context.Context, req *matchingpb.CreateB
 	return &matchingpb.CreateBidResponse{BidId: id}, nil
 }
 
-// GetBidsForProject handles getting all bids for a project with validation
 func (h *MatchingHandler) GetBidsForProject(ctx context.Context, req *matchingpb.GetBidsRequest) (*matchingpb.GetBidsResponse, error) {
 	if strings.TrimSpace(req.GetProjectId()) == "" {
 		return nil, status.Error(codes.InvalidArgument, "project_id is required")
@@ -71,7 +68,6 @@ func (h *MatchingHandler) GetBidsForProject(ctx context.Context, req *matchingpb
 	return &matchingpb.GetBidsResponse{Bids: pbBids}, nil
 }
 
-// MatchFreelancers handles freelancer matching (basic skill logic)
 func (h *MatchingHandler) MatchFreelancers(ctx context.Context, req *matchingpb.MatchRequest) (*matchingpb.MatchResponse, error) {
 	if strings.TrimSpace(req.GetProjectId()) == "" {
 		return nil, status.Error(codes.InvalidArgument, "project_id is required")
@@ -96,12 +92,10 @@ func (h *MatchingHandler) MatchFreelancers(ctx context.Context, req *matchingpb.
 	return &matchingpb.MatchResponse{Freelancers: resp}, nil
 }
 
-// generateID временно
 func generateID() string {
 	return "bid_" + model.GenerateUUID()
 }
 
-// isEmpty checks for blank strings
 func isEmpty(strs ...string) bool {
 	for _, s := range strs {
 		if strings.TrimSpace(s) == "" {

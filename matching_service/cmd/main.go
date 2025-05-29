@@ -25,7 +25,6 @@ func main() {
 
 	ctx := context.Background()
 
-	// Mongo
 	mongoCfg := config.Config{
 		URI:      os.Getenv("MONGO_DB_URI"),
 		Database: os.Getenv("MONGO_DB"),
@@ -36,18 +35,14 @@ func main() {
 	}
 	var mongoDB *mongo.Database = db.Conn
 
-	// Redis
 	redisCache := cache.NewRedisCache("localhost:6379")
 	seed.Run(redisCache)
 
-	// NATS
 	publisher := events.NewPublisher("nats://localhost:4222")
 
-	// UseCase
 	bidRepo := repository.NewBidRepository(mongoDB)
 	uc := usecase.NewMatchingUseCase(bidRepo, redisCache, publisher)
 
-	// gRPC
 	grpcHandler := handler.NewMatchingHandler(uc)
 	lis, err := net.Listen("tcp", ":8081")
 	if err != nil {

@@ -28,6 +28,6 @@ func (p *Publisher) PublishBidCreated(ctx context.Context, bid *model.Bid) error
 		return err
 	}
 
-	subject := "ap2.statistics.event.updated" // 👈 как по критерию
+	subject := "ap2.statistics.event.updated"
 	return p.conn.Publish(subject, data)
 }

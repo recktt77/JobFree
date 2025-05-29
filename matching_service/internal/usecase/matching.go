@@ -24,7 +24,6 @@ func NewMatchingUseCase(bidRepo repository.BidRepository, redis *cache.RedisCach
 	}
 }
 
-// 💾 Создаёт заявку и сохраняет в MongoDB
 func (uc MatchingUseCase) CreateBid(ctx context.Context, bid *model.Bid) (string, error) {
 	bid.Timestamp = time.Now().Format(time.RFC3339)
 	err := uc.Publisher.PublishBidCreated(ctx, bid)
@@ -35,14 +34,12 @@ func (uc MatchingUseCase) CreateBid(ctx context.Context, bid *model.Bid) (string
 	return bid.BidID, nil
 }
 
-// 📤 Получает все заявки по project_id
 func (uc MatchingUseCase) GetBidsForProject(ctx context.Context, projectID string) ([]model.Bid, error) {
 	bidPtrs, err := uc.BidRepo.GetByProjectID(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Преобразуем []*model.Bid в []model.Bid
 	bids := make([]model.Bid, 0, len(bidPtrs))
 	for _, ptr := range bidPtrs {
 		if ptr != nil {
@@ -53,7 +50,6 @@ func (uc MatchingUseCase) GetBidsForProject(ctx context.Context, projectID strin
 	return bids, nil
 }
 
-// 🎯 Фильтрация по скиллам через Redis
 func (uc MatchingUseCase) MatchFreelancers(ctx context.Context, requiredSkills []string) ([]model.Freelancer, error) {
 	allFreelancers, err := uc.Redis.GetAllFreelancers()
 	if err != nil {

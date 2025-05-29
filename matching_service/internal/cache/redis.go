@@ -25,7 +25,6 @@ func NewRedisCache(addr string) *RedisCache {
 	return &RedisCache{client: rdb}
 }
 
-// Сохраняем фрилансера в Redis
 func (r *RedisCache) SaveFreelancer(freelancerID string, data map[string]interface{}) error {
 	key := fmt.Sprintf("freelancer:%s", freelancerID)
 
@@ -37,7 +36,6 @@ func (r *RedisCache) SaveFreelancer(freelancerID string, data map[string]interfa
 	return r.client.Set(ctx, key, jsonData, 0).Err()
 }
 
-// Получаем всех фрилансеров
 func (r *RedisCache) GetAllFreelancers() ([]map[string]interface{}, error) {
 	var result []map[string]interface{}
 
