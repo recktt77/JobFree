@@ -37,11 +37,12 @@ func SetupRoutes(r *gin.Engine) {
 	// Auth endpoints
 	api.POST("/auth/register", handlers.RegisterUser)
 	api.POST("/auth/login", handlers.LoginUser)
+	api.POST("/auth/profile", middleware.ValidateJWT, handlers.GetProfile)
+	api.PUT("/auth/profile", middleware.ValidateJWT, handlers.UpdateProfile)
 
 	api.POST("/payments", middleware.ValidateJWT, handlers.CreatePayment)
 	api.POST("/payments/get", middleware.ValidateJWT, handlers.GetPayment)
 	api.POST("/payments/list", middleware.ValidateJWT, handlers.ListUserPayments)
-
 
 	api.POST("/subscriptions", middleware.ValidateJWT, handlers.Subscribe)
 	api.POST("/subscriptions/cancel", middleware.ValidateJWT, handlers.CancelSubscription)
@@ -54,10 +55,15 @@ func SetupRoutes(r *gin.Engine) {
 	api.PUT("/plans", middleware.ValidateJWT, handlers.UpdatePlan)
 	api.POST("/plans/list", middleware.ValidateJWT, handlers.GetListOfPlans)
 
-
 	// bids
 	// Matching endpoints
 	api.POST("/bids", middleware.ValidateJWT, handlers.CreateBid)
 	api.GET("/bids/:project_id", handlers.GetBidsForProject)
 	api.POST("/match", middleware.ValidateJWT, handlers.MatchFreelancers)
+
+	// Admin
+	api.POST("/admin/ban", middleware.ValidateJWT, handlers.BanUser)
+	api.POST("/admin/delete-review", middleware.ValidateJWT, handlers.DeleteReview)
+	api.POST("/admin/moderate-project", middleware.ValidateJWT, handlers.ModerateProject)
+	api.GET("/admin/stats", middleware.ValidateJWT, handlers.GetPlatformStats)
 }

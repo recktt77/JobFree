@@ -31,7 +31,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("❌ Mongo connection error: %v", err)
 	}
-	db := client.Database("jobfree")
+	db := client.Database("jobfree-admin")
 	log.Println("✅ Connected to MongoDB")
 
 	// NATS (опционально)
@@ -62,14 +62,14 @@ func main() {
 	handler := delivery.NewAdminHandler(uc)
 
 	// gRPC Server
-	lis, err := net.Listen("tcp", ":8082")
+	lis, err := net.Listen("tcp", ":50058")
 	if err != nil {
 		log.Fatalf("❌ Failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
 	adminpb.RegisterAdminServiceServer(s, handler)
 
-	log.Println("🚀 AdminService running on :8082")
+	log.Println("🚀 AdminService running on :50058")
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("❌ Server error: %v", err)
 	}
