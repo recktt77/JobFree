@@ -38,4 +38,16 @@ func SetupRoutes(r *gin.Engine) {
 	api.POST("/auth/register", handlers.RegisterUser)
 	api.POST("/auth/login", handlers.LoginUser)
 
+	api.POST("/payments", middleware.ValidateJWT, handlers.CreatePayment)
+	api.POST("/payments/get", middleware.ValidateJWT, handlers.GetPayment)
+	api.POST("/payments/list", middleware.ValidateJWT, handlers.ListUserPayments)
+
+
+	// subscription
+	api.POST("/subscriptions", middleware.ValidateJWT, handlers.Subscribe)
+	api.POST("/subscriptions/cancel", middleware.ValidateJWT, handlers.CancelSubscription)
+	api.POST("/subscriptions/status", middleware.ValidateJWT, handlers.GetSubscriptionStatus)
+	api.POST("/subscriptions/all", middleware.ValidateJWT, handlers.GetSubscriptions)
+
+
 }

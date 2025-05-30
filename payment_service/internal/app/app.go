@@ -43,8 +43,7 @@ func Run() {
 	paymentHandler := frontend.NewPaymentHandler(paymentUsecase)
 	servers := server.NewServers(paymentHandler) // ✅ теперь всё совместимо
 
-
-	if err := server.RunGRPCServer(servers, "8088"); err != nil {
+	if err := server.RunGRPCServer(servers, "50055"); err != nil {
 		log.Fatal("gRPC server error:", err)
 	}
 }
