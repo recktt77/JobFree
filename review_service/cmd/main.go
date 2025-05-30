@@ -42,16 +42,16 @@ func main() {
 	}
 
 	// gRPC server
-	lis, err := net.Listen("tcp", ":50051")
+	lis, err := net.Listen("tcp", ":50053")
 	if err != nil {
-		log.Fatalf("Failed to listen on port 50051: %v", err)
+		log.Fatalf("Failed to listen on port 50053: %v", err)
 	}
 
 	grpcServer := grpc.NewServer()
 	srv := handler.NewReviewHandler(repo, broker, cache)
 	pb.RegisterReviewServiceServer(grpcServer, srv)
 
-	fmt.Println("ReviewService gRPC server running on :50051")
+	fmt.Println("ReviewService gRPC server running on :50053")
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve gRPC: %v", err)
 	}
