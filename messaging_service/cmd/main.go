@@ -57,7 +57,7 @@ func main() {
 	}()
 
 	// gRPC config from env
-	grpcPort := config.GetEnv("GRPC_PORT", ":50054")
+	grpcPort := config.GetEnv("GRPC_PORT", ":50055")
 	lis, err := net.Listen("tcp", grpcPort)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
