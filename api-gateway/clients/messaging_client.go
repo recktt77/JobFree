@@ -16,7 +16,7 @@ var (
 
 func GetMessagingClient() pb.MessagingServiceClient {
 	messagingOnce.Do(func() {
-		conn, err := grpc.Dial("localhost:50054", grpc.WithInsecure())
+		conn, err := grpc.Dial("localhost:50055", grpc.WithInsecure())
 		if err != nil {
 			log.Fatalf("Failed to connect to MessagingService: %v", err)
 		}

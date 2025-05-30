@@ -25,7 +25,7 @@ func Run() {
 		log.Fatal("Failed to connect to MongoDB:", err)
 	}
 
-	db := client.Database("jobfree")
+	db := client.Database("jobfree-payment")
 	// NATS init
 	nc, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
@@ -43,7 +43,7 @@ func Run() {
 	paymentHandler := frontend.NewPaymentHandler(paymentUsecase)
 	servers := server.NewServers(paymentHandler) // ✅ теперь всё совместимо
 
-	if err := server.RunGRPCServer(servers, "50055"); err != nil {
+	if err := server.RunGRPCServer(servers, "50057"); err != nil {
 		log.Fatal("gRPC server error:", err)
 	}
 }

@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// Загрузка переменных окружения из .env
-	err := godotenv.Load("C:\\Users\\админ\\Desktop\\HW\\JobFree\\subscription_service\\.env")
+	err := godotenv.Load(".env")
 	if err != nil {
 		log.Println("Error loading .env file:", err)
 	}

@@ -44,7 +44,7 @@ func main() {
 	uc := usecase.NewMatchingUseCase(bidRepo, redisCache, publisher)
 
 	grpcHandler := handler.NewMatchingHandler(uc)
-	lis, err := net.Listen("tcp", ":8081")
+	lis, err := net.Listen("tcp", ":50054")
 	if err != nil {
 		log.Fatalf("❌ failed to listen: %v", err)
 	}
@@ -52,7 +52,7 @@ func main() {
 	server := grpc.NewServer()
 	matchingpb.RegisterMatchingServiceServer(server, grpcHandler)
 
-	fmt.Println("🚀 MatchingService is running on :8081")
+	fmt.Println("🚀 MatchingService is running on :50054")
 	if err := server.Serve(lis); err != nil {
 		log.Fatalf("❌ failed to serve: %v", err)
 	}

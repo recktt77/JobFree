@@ -19,6 +19,6 @@ func NewMongoRepository(uri string) *MongoRepository {
 	}
 
 	return &MongoRepository{
-		Bids: client.Database("jobfree").Collection("bids"),
+		Bids: client.Database("jobfree-matching").Collection("bids"),
 	}
 }

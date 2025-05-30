@@ -43,7 +43,6 @@ func SetupRoutes(r *gin.Engine) {
 	api.POST("/payments/list", middleware.ValidateJWT, handlers.ListUserPayments)
 
 
-	// Subscription endpoints
 	api.POST("/subscriptions", middleware.ValidateJWT, handlers.Subscribe)
 	api.POST("/subscriptions/cancel", middleware.ValidateJWT, handlers.CancelSubscription)
 	api.POST("/subscriptions/status", middleware.ValidateJWT, handlers.GetSubscriptionStatus)
@@ -56,6 +55,9 @@ func SetupRoutes(r *gin.Engine) {
 	api.POST("/plans/list", middleware.ValidateJWT, handlers.GetListOfPlans)
 
 
-
-
+	// bids
+	// Matching endpoints
+	api.POST("/bids", middleware.ValidateJWT, handlers.CreateBid)
+	api.GET("/bids/:project_id", handlers.GetBidsForProject)
+	api.POST("/match", middleware.ValidateJWT, handlers.MatchFreelancers)
 }
