@@ -64,3 +64,61 @@ func GetSubscriptions(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
+
+
+
+func CreatePlan(c *gin.Context) {
+	var req pb.CreatePlanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	res, err := clients.GetSubscriptionClient().CreatePlan(c, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func GetPlanByID(c *gin.Context) {
+	var req pb.GetPlanByIDRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	res, err := clients.GetSubscriptionClient().GetPlanByID(c, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func UpdatePlan(c *gin.Context) {
+	var req pb.UpdatePlanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	res, err := clients.GetSubscriptionClient().UpdatePlan(c, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func GetListOfPlans(c *gin.Context) {
+	var req pb.GetListOfPlansRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	res, err := clients.GetSubscriptionClient().GetListOfPlans(c, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
