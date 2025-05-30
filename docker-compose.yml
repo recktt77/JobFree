@@ -1,0 +1,56 @@
+version: '3.9'
+
+services:
+  admin_service:
+    build:
+      context: ./admin_service
+    container_name: admin_service
+    ports:
+      - "8082:8082"
+      - "2113:2112"  # наружу 2113, внутри 2112 (для Prometheus)
+    depends_on:
+      - mongo
+      - nats
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - NATS_URL=nats://nats:4222
+
+
+  mongo:
+    image: mongo:6
+    container_name: mongo
+    ports:
+      - "27018:27017"
+    networks:
+      - jobfree_net
+
+  nats:
+    image: nats:2.10
+    container_name: nats
+    ports:
+      - "4223:4222"       # наружу 4223, внутри 4222 (по умолчанию)
+      - "8223:8222"       # monitoring
+    networks:
+      - jobfree_net
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - jobfree_net
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - jobfree_net
+
+networks:
+  jobfree_net:
+    driver: bridge
